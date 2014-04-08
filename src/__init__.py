@@ -46,7 +46,7 @@ Other outputed tokens are
   * Text:                whitespace
   * Name:                all identifiers (in Alloy, identifiers are like in Java, except
                          that the single quotation mark may appear anywhere except at the
-                         beginning
+                         beginning)
 """
 class AlloyLexer(RegexLexer):
     name = 'Alloy'

@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    Red lexer
-    ~~~~~~~~~~~
-
-    * some fixes to RubyLexer --- class RedRubyLexer
-    * lexer for Ruby + Red --- class RedLexer
-    * some styles
+    Pygments lexer for the Alloy modeling language (alloy.mit.edu).
 """
 from pygments.lexers.web import HtmlLexer
 from pygments.lexer import bygroups, DelegatingLexer
@@ -17,80 +12,46 @@ import sys
 import collections
 
 
-def _idx(t):   return (t[0] if t is not None else None)
-def _token(t): return (t[1] if t is not None else None)
-def _value(t): return (t[2] if t is not None else None)
-
-"""
---------------------------------------------------------------------------------
-  Common lexer class that implements lookahed and lookbehind buffers.
---------------------------------------------------------------------------------
-"""
-class MyLexerBase(RegexLexer):
-    lookahead = 10
-    lookbehind = 1
-    queue = collections.deque()
-    nows_queue = collections.deque()
-    processed = collections.deque([], lookbehind)
-
-    def peek_ahead(self, n):
-        if len(self.nows_queue) >= n:
-            return self.nows_queue[n-1]
-        else:
-            return (None, None, None)
-
-    def next(self):
-        return self.peek_ahead(1)
-
-    def prev(self):
-        if len(self.processed) > 0:
-            return self.processed[-1]
-        else:
-            return (None, None, None)
-
-    def process_one(self, curr):
-        raise Exception('must override')
-
-    def get_tokens_unprocessed(self, text):
-        def __process(res):
-            # print >> sys.stderr, "%s '%s'" % (res[1], res[2])
-            if res is not None and _token(res) is not Token.Text:
-                self.processed.append(res)
-            return res
-
-        for index, token, value in RegexLexer.get_tokens_unprocessed(self, text):
-            self.queue.append((index, token, value))
-            if token is not Token.Text:
-                self.nows_queue.append((index, token, value))
-            if len(self.nows_queue) < 1 + self.lookahead: continue
-            curr = self.queue.popleft()
-            if _token(curr) is not Token.Text:
-                self.nows_queue.popleft()
-            ans = __process(self.process_one(curr))
-            if ans is not None:
-                yield ans
-
-        while (len(self.queue) > 0):
-            curr = self.queue.popleft()
-            if _token(curr) is not Token.Text:
-                self.nows_queue.popleft()
-            ans = __process(self.process_one(curr))
-            if ans is not None: yield ans
-
 """
 Alloy Lexer class.
+
+This lexer outputs several different Keyword, Name, and Operator tokens:
+
+  * Keyword.Namespace:   'module'
+  * Keyword.Declaration: 'sig'
+  * Keyword.Constant:    'iden', 'univ', 'none'
+  * Keyword.Type:        'int', 'Int'
+  * Keyword:             'this', 'abstract', 'extends', 'set', 'seq', 'one', 'lone', 'let',
+                         'all', 'some', 'no', 'sum', 'disj', 'when', 'else',
+                         'run', 'check', 'for', 'but', 'exactly',
+                         'fun', 'pred', 'fact', 'assert'
+
+  * Name.Class:          signature declaration names
+  * Name.Namespace:      module declaration names
+  * Name.Function:       function (fun/pred/fact/assert) declaration names
+  * Name:                all other identifiers
+
+  * Operator.Word:      'and', 'or', 'implies', 'iff', 'in'
+  * Operator:            '!', '#', '&&', '++', '<<', '>>', '>=', '<=', '<=>', '.', '->',
+                         '-', '+', '/', '*', '%', '=', '<', '>', '&', '!', '^', '|', '~',
+                         '{', '}', '[', ']', '(', ')'
+
+Other outputed tokens are
+
+  * Punctuation:         ',', ':'
+  * Comment.Single:      single-line comments starting with '--' or '//'
+  * Comment.Multiline:   comments starting with '/*' or '/**' and ending with '*/'
+  * Number.Integer       integer literals
+  * String:              string literals
+  * Text:                whitespace
+  * Name:                all identifiers (in Alloy, identifiers are like in Java, except
+                         that the single quotation mark may appear anywhere except at the
+                         beginning
 """
-class AlloyLexer(MyLexerBase):
+class AlloyLexer(RegexLexer):
     name = 'Alloy'
     aliases = ['alloy']
-    filenames = ['*.als'] # just to have one if you whant to use
-
-    # SIG_KEYWORDS   = ['sig', 'abstract', 'enum']
-    # OPS_KEYWORDS   = ['extends', 'set', 'seq', 'one', 'lone', 'no', 'all', 'some', 'sum', 'when', 'else', 'implies', 'not', 'iff', 'and', 'or', 'in', 'disj']
-    # FUN_KEYWORDS =   ['fun', 'pred', 'assert', 'fact']
-    # OTHER_KEYWORDS = ['none', 'iden', 'univ', 'let', 'open', 'module', 'check', 'run', 'for', 'but', 'exactly', 'Int', 'int']
-
-    # EXTRA_KEYWORDS = SIG_KEYWORDS + OPS_KEYWORDS + FUN_KEYWORDS + OTHER_KEYWORDS
+    filenames = ['*.als']
 
     iden_rex = r'[a-zA-Z_][a-zA-Z0-9_\']*'
     text_tuple = (r'[^\S\n]+', Text)
@@ -117,7 +78,6 @@ class AlloyLexer(MyLexerBase):
             (r'//.*?$', Comment.Single),
             (r'/\*.*?\*/', Comment.Multiline),
             text_tuple,
-            (r'"(\\\\|\\"|[^"])*"', String),
             (r'(module)(\s+)', bygroups(Keyword.Namespace, Text), 'module'),
             (r'(sig|enum)(\s+)', bygroups(Keyword.Declaration, Text), 'sig'),
             (r'(iden|univ|none)\b', Keyword.Constant),
@@ -127,11 +87,12 @@ class AlloyLexer(MyLexerBase):
             (r'(run|check|for|but|exactly)\b', Keyword),
             (r'(and|or|implies|iff|in)\b', Operator.Word),
             (r'(fun|pred|fact|assert)(\s+)', bygroups(Keyword, Text), 'fun'),
-            (r'!|#|&&|\+\+|<<|>>|>=|<=|<=>|\.|->', Operator), 
+            (r'!|#|&&|\+\+|<<|>>|>=|<=|<=>|\.|->', Operator),
             (r'[-+/*%=<>&!^|~\{\}\[\]\(\)\.]', Operator),
             (iden_rex, Name),
             (r'[:,]', Punctuation),
             (r'[0-9]+', Number.Integer),
+            (r'"(\\\\|\\"|[^"])*"', String),
             (r'\n', Text),
         ]
     }
@@ -146,6 +107,18 @@ from pygments.style import Style
 from pygments.styles import get_style_by_name
 
 
+"""
+Style class for the color theme used by the Alloy Analyzer IDE.
+
+This theme does not define different colors for all different tokens
+outputed by the lexer; instead it uses one color for all keywords,
+another for all comments, and another for all identifiers, just like
+the Alloy Analyzer.  The only differences are:
+
+  * this style prints operators in bold
+  * in this style, multiline doc comments (starting with '/**') are not bold
+    (because the lexer outputs the same token for both kinds of multiline comments)
+"""
 class AlloyStyle(Style):
     default_style = ""
 
@@ -153,12 +126,6 @@ class AlloyStyle(Style):
     base = get_style_by_name("tango")
     for token in base.styles.keys():
         styles[token] = base.styles[token]
-
-    # const_style = '#000000'
-
-    # styles[Name.Constant] = const_style
-    # styles[Name.Class] = 'bold ' + const_style
-    # styles[Name.Namespace] = const_style
 
     styles[Keyword]  = '#1F1FA8 bold'
     styles[Comment]  = '#429E24 italic'
@@ -177,7 +144,7 @@ class AlloyStyle(Style):
     styles[Comment.Preproc]   = styles[Comment]
     styles[Comment.Single]    = styles[Comment]
     styles[Comment.Special]   = styles[Comment]
-        
+
     styles[Literal.Number.Integer] = styles[Literal]
     styles[Literal.String]         = styles[Literal]
 

@@ -1,7 +1,6 @@
 # Pygments Alloy
 
-Lexer for the Alloy specification language developed by the Software
-Design Group at MIT.
+Lexer for the [Alloy](http://alloy.mit.edu) modeling language developed by the [Software Design Group](http://sdg.csail.mit.edu) at [MIT](http://mit.edu).
 
 # Installation
 

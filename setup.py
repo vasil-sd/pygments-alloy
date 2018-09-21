@@ -21,7 +21,6 @@ setup(
                     alloy=src:AlloyLexer
 
                     [pygments.styles]
-                    github=src:GithubStyle
                     alloy=src:AlloyStyle''',
 
     classifiers=[

@@ -4,7 +4,8 @@
 """
 from pygments.lexers.web import HtmlLexer
 from pygments.lexer import bygroups, DelegatingLexer
-from pygments.lexers.agile import RubyLexer, RegexLexer
+from pygments.lexers import RubyLexer
+from pygments.lexer import RegexLexer
 from pygments.lexers.templates import ErbLexer
 from pygments.token import Token, Text, Keyword, Name, Comment, String, Error, Number, Operator, Generic, Literal, Punctuation
 
